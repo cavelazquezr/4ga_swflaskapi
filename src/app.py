@@ -2,13 +2,13 @@
 This module takes care of starting the API Server, Loading the DB and Adding the endpoints
 """
 import os
-from flask import Flask, request, jsonify, url_for
+from flask import Flask, request, jsonify, url_for, json
 from flask_migrate import Migrate
 from flask_swagger import swagger
 from flask_cors import CORS
 from utils import APIException, generate_sitemap
 from admin import setup_admin
-from models import db, User
+from models import db, Character
 #from models import Person
 
 app = Flask(__name__)
@@ -36,14 +36,40 @@ def handle_invalid_usage(error):
 def sitemap():
     return generate_sitemap(app)
 
-@app.route('/user', methods=['GET'])
-def handle_hello():
+@app.route('/characters', methods=['GET'])
+def handle_characters():
+
+    characters = Character.query.all() # SELECT * FROM CHARACTER
+    characters_list = list(map(lambda character: character.serialize_all(), characters))
 
     response_body = {
-        "msg": "Hello, this is your GET /user response "
+        "message": "ok",
+        "result": characters_list
     }
 
     return jsonify(response_body), 200
+
+@app.route('/characters/<int:uid>', methods=["GET"])
+def handle_character(uid):
+    ucharacter = Character.query.get(uid)
+
+    response_body = {
+        "message": "ok",
+        "result": ucharacter.serialize_each()
+    }
+
+    return jsonify(response_body), 200
+
+@app.route('/createcharacter', methods=["POST"])
+def create_character():
+    body = json.loads(request.data)
+    new_character = Character(name=body["name"], gender=body["gender"])
+    db.session.add(new_character)
+    db.session.commit()
+
+    return "ok", 200
+
+
 
 # this only runs if `$ python src/app.py` is executed
 if __name__ == '__main__':
